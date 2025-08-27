@@ -1,4 +1,4 @@
-import Glossary from "@/components/education/Glossary";
+import GlossaryClient from "./GlossaryClient";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function Page() {
   return (
     <main className="min-h-screen w-full">
-      <Glossary />
+      <GlossaryClient />
     </main>
   );
 }

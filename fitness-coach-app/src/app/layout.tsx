@@ -5,6 +5,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { Toaster } from "sonner";
 import { LocaleProvider } from "@/contexts/LocaleContext";
 import { BottomNavigation } from "@/components/navigation/BottomNavigation";
+import GoogleAnalytics from "@/components/analytics/GoogleAnalytics";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -60,6 +61,11 @@ export default function RootLayout({
       <head>
         <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
         <link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />
+        {/* Resource Hints */}
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" crossOrigin="anonymous" />
+        {/* Supabase project preconnect (safe fallback if env missing) */}
+        <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL || "https://supabase.co"} crossOrigin="anonymous" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
         <meta name="apple-mobile-web-app-title" content="Fitness Coach" />
@@ -75,6 +81,7 @@ export default function RootLayout({
             </div>
             <BottomNavigation />
             <Toaster />
+            <GoogleAnalytics />
           </AuthProvider>
         </LocaleProvider>
       </body>

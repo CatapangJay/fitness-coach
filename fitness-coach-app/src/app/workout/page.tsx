@@ -7,6 +7,7 @@ export default function WorkoutPage() {
       <Suspense fallback={<div>Loading workout...</div>}>
         <WorkoutTrackingClient />
       </Suspense>
+
     </div>
   );
 }

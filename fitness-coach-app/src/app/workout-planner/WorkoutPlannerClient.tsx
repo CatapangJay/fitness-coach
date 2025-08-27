@@ -33,6 +33,8 @@ export function WorkoutPlannerClient() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('current');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -136,6 +138,25 @@ export function WorkoutPlannerClient() {
 
   const handleError = (errorMessage: string) => {
     setError(errorMessage);
+  };
+
+  const fetchAiSuggestions = async () => {
+    try {
+      setAiLoading(true);
+      setAiSuggestions(null);
+      const res = await fetch('/api/ai/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'workout', profile: userProfile }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI request failed');
+      setAiSuggestions(data.suggestions as string);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to get AI suggestions');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   if (isLoading) {
@@ -252,6 +273,28 @@ export function WorkoutPlannerClient() {
 
           {/* Generate Plan Tab */}
           <TabsContent value="generate" className="space-y-6">
+            <div className="flex items-center justify-between">
+              <div />
+              <Button variant="outline" onClick={fetchAiSuggestions} disabled={aiLoading}>
+                {aiLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Getting AI suggestions...
+                  </>
+                ) : (
+                  'Get AI Suggestions'
+                )}
+              </Button>
+            </div>
+            {aiSuggestions && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>AI Suggestions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="prose prose-sm max-w-none whitespace-pre-wrap">{aiSuggestions}</div>
+                </CardContent>
+              </Card>
+            )}
             <WorkoutPlanGenerator
               userProfile={userProfile}
               onPlanGenerated={handlePlanGenerated}

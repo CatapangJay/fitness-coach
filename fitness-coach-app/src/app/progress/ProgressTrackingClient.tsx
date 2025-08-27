@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,12 +11,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ProgressCharts, WorkoutSummaryCharts } from '@/components/progress/ProgressCharts';
 import { ProgressiveOverloadAnalysis } from '@/components/progress/ProgressiveOverloadAnalysis';
 import { WorkoutDifficultyFeedback } from '@/components/progress/WorkoutDifficultyFeedback';
+
 import { 
   getProgressData, 
   getWorkoutSummary, 
   getProgressiveOverloadDetection,
   type ProgressData 
 } from '@/app/actions/progress';
+import { supabase } from '@/lib/supabase';
+
 import { 
   TrendingUp, 
   Calendar, 
@@ -32,14 +36,18 @@ export function ProgressTrackingClient() {
   const { user } = useAuth();
   const [progressData, setProgressData] = useState<ProgressData[]>([]);
   const [workoutSummary, setWorkoutSummary] = useState<any>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const [selectedExercise, setSelectedExercise] = useState<string>('');
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('90');
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiMonthlyData, setAiMonthlyData] = useState<any>(null);
 
   useEffect(() => {
     if (user) {
       loadProgressData();
+      loadUserProfile();
     }
   }, [user, selectedTimeframe]);
 
@@ -64,6 +72,48 @@ export function ProgressTrackingClient() {
       toast.error('Failed to load progress data');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+    try {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      if (error) throw error;
+      setUserProfile(data);
+    } catch (e) {
+      console.warn('Failed to load user profile for monthly AI review', e);
+    }
+  };
+
+  const runMonthlyReview = async () => {
+    if (!userProfile || !workoutSummary) return;
+    try {
+      setAiLoading(true);
+      setAiMonthlyData(null);
+      const month = new Date().toISOString().slice(0, 7);
+      const res = await fetch('/api/ai/monthly-review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          profile: userProfile,
+          workoutSummary,
+          month,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI monthly review failed');
+      setAiMonthlyData(data);
+      setActiveTab('overview');
+    } catch (e) {
+      console.error(e);
+      toast.error('Failed to generate monthly AI review');
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -135,6 +185,9 @@ export function ProgressTrackingClient() {
               <SelectItem value="365">1 Year</SelectItem>
             </SelectContent>
           </Select>
+          <Button variant="outline" onClick={runMonthlyReview} disabled={aiLoading || !userProfile}>
+            {aiLoading ? 'Generating Review…' : 'Monthly AI Review'}
+          </Button>
         </div>
       </div>
 
@@ -201,6 +254,65 @@ export function ProgressTrackingClient() {
           {/* Workout Summary Charts */}
           <WorkoutSummaryCharts summary={workoutSummary} />
 
+          {/* AI Monthly Review Panel */}
+          {aiMonthlyData && (
+            <Card>
+              <CardHeader>
+                <CardTitle>AI Monthly Review & Goals</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {aiMonthlyData.assessment && (
+                  <div className="prose prose-sm max-w-none whitespace-pre-wrap">
+                    {aiMonthlyData.assessment}
+                  </div>
+                )}
+                {aiMonthlyData.adjustments && (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <h4 className="font-semibold mb-2">Workout Adjustments</h4>
+                      <ul className="list-disc pl-5 space-y-1 text-sm">
+                        {aiMonthlyData.adjustments.workout?.map((it: string, i: number) => (
+                          <li key={i}>{it}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <h4 className="font-semibold mb-2">Meal Adjustments</h4>
+                      <ul className="list-disc pl-5 space-y-1 text-sm">
+                        {aiMonthlyData.adjustments.meal?.map((it: string, i: number) => (
+                          <li key={i}>{it}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+                {aiMonthlyData.next_month_goals && (
+                  <div className="space-y-2">
+                    <h4 className="font-semibold">Next Month Goals</h4>
+                    <div className="text-sm">
+                      Weekly Workouts: <span className="font-medium">{aiMonthlyData.next_month_goals.weekly_workouts ?? '—'}</span>
+                    </div>
+                    {aiMonthlyData.next_month_goals.target_calories != null && (
+                      <div className="text-sm">Daily Target Calories: <span className="font-medium">{aiMonthlyData.next_month_goals.target_calories}</span></div>
+                    )}
+                    {Array.isArray(aiMonthlyData.next_month_goals.focus_muscle_groups) && (
+                      <div className="text-sm">Focus Muscle Groups: {aiMonthlyData.next_month_goals.focus_muscle_groups.join(', ')}</div>
+                    )}
+                    {Array.isArray(aiMonthlyData.next_month_goals.habits) && (
+                      <div>
+                        <div className="text-sm font-medium mb-1">Habits:</div>
+                        <ul className="list-disc pl-5 space-y-1 text-sm">
+                          {aiMonthlyData.next_month_goals.habits.map((h: string, i: number) => (
+                            <li key={i}>{h}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
           {/* Recent Achievements */}
           <Card>
             <CardHeader>

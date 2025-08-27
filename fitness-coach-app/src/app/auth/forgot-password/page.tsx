@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { ForgotPasswordForm } from '@/components/auth/ForgotPasswordForm';
+import ForgotPasswordClient from './ForgotPasswordClient';
 
 export const metadata: Metadata = {
   title: 'Reset Password - Fitness Coach App',
@@ -19,7 +19,7 @@ export default function ForgotPasswordPage() {
           </p>
         </div>
         
-        <ForgotPasswordForm />
+        <ForgotPasswordClient />
       </div>
     </div>
   );

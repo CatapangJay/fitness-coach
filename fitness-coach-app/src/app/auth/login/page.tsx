@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { LoginForm } from '@/components/auth/LoginForm';
+import LoginClient from './LoginClient';
 
 export const metadata: Metadata = {
   title: 'Sign In - Fitness Coach App',
@@ -19,7 +19,7 @@ export default function LoginPage() {
           </p>
         </div>
         
-        <LoginForm />
+        <LoginClient />
       </div>
     </div>
   );

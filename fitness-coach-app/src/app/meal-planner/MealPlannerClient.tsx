@@ -36,6 +36,8 @@ export function MealPlannerClient() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [workSchedule, setWorkSchedule] = useState<'day' | 'night' | 'flex'>('day');
   const [climate, setClimate] = useState<'hot' | 'rainy' | 'cool'>('hot');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<string | null>(null);
 
   // Persist cultural context (workSchedule, climate)
   const CONTEXT_KEY = 'fc.culturalContext';
@@ -172,6 +174,31 @@ export function MealPlannerClient() {
 
   const handleMealPlanUpdated = (updatedMealPlan: MealPlan) => {
     setGeneratedMealPlan(updatedMealPlan);
+  };
+
+  const fetchAiSuggestions = async () => {
+    try {
+      setAiLoading(true);
+      setAiSuggestions(null);
+      const res = await fetch('/api/ai/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'meal',
+          profile,
+          context: { workSchedule, climate, date: selectedDate.toISOString() },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'AI request failed');
+      setAiSuggestions(data.suggestions as string);
+    } catch (e: any) {
+      console.error('AI meal suggestions error', e);
+      // non-blocking UI: show small inline error via suggestions text
+      setAiSuggestions('Failed to get AI suggestions. Please try again later.');
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   const getTotalDailyNutrition = () => {
@@ -464,6 +491,30 @@ export function MealPlannerClient() {
                   </TabsList>
 
                   <TabsContent value="generator" className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div className="text-sm text-muted-foreground">
+                        Use AI to get culturally-aware ideas, then refine your plan.
+                      </div>
+                      <Button variant="outline" size="sm" onClick={fetchAiSuggestions} disabled={aiLoading}>
+                        {aiLoading ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Getting AI suggestions...
+                          </>
+                        ) : (
+                          'Get AI Suggestions'
+                        )}
+                      </Button>
+                    </div>
+                    {aiSuggestions && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>AI Suggestions</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="prose prose-sm max-w-none whitespace-pre-wrap">{aiSuggestions}</div>
+                        </CardContent>
+                      </Card>
+                    )}
                     {!generatedMealPlan ? (
                       <MealPlanGenerator
                         profile={profile}

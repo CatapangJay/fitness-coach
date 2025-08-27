@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import { RegisterForm } from '@/components/auth/RegisterForm';
+import RegisterClient from './RegisterClient';
 
 export const metadata: Metadata = {
   title: 'Create Account - Fitness Coach App',
@@ -19,7 +19,7 @@ export default function RegisterPage() {
           </p>
         </div>
         
-        <RegisterForm />
+        <RegisterClient />
       </div>
     </div>
   );
